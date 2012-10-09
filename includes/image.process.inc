@@ -20,18 +20,62 @@ function islandora_basic_image_create_all_derivatives($object) {
     drupal_set_message(t('Could not create image derivatives for %s.  No image file was uploaded.', array('%s' => $object->id)),'error');
     return "";
   }
+
+  /// TODO: This solution pack should really check for proper type uploaded.. the PHP file type detection code is very poor.
+
   $ext = $mime_class->getExtension($object['OBJ']->mimeType);
   $file_name = str_replace(':', '-', $object->id);
-  $original_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'OBJ.' . $ext);
-  $tn_file = file_copy($original_file, 'temporary://' . $file_name . 'TN.' . $ext);
+
+  if ($ext == 'tiff' || $ext == 'tif') {
+    $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
+    $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
+
+    exec(escapeshellcmd("convert -resize 1024x1024> " . drupal_realpath($archive_file->uri)) . " " . drupal_realpath($master_file->uri));
+
+    $ext = 'jpg';
+
+    // When a tiff, we need to save the original to an ARCHIVE datastream
+
+    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'image/tiff');
+
+    // But we've still got a tiff as the main object (dsid OBJ) - let's fix that.
+
+    if ($object->purgeDatastream('OBJ')) {
+
+      $ds = $object->constructDatastream('OBJ', 'M');
+      $ds->label = 'OBJ';
+      $ds->mimeType = 'image/jpeg';
+      $ds->setContentFromFile(drupal_realpath($master_file->uri));
+      $object->ingestDatastream($ds);
+
+      // TODO: non-administrator or non-authenticated user should not be able to look at the original tiff datastream; need to attach a policy
+
+    } else {
+
+      drupal_set_message(t("islandora_basic_image_islandora_create_all_derivatives COULD NOT purge OBJ data streams"));
+
+      // TODO: My my, what to do here for cleanup?
+    }
+
+
+  } else {
+
+    $master_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'OBJ.' . $ext);
+  }
+
+  $tn_file = file_copy($master_file, 'temporary://' . $file_name . 'TN.' . $ext);
+
   if (islandora_basic_image_create_derivative($tn_file, 200, 200)) {
     islandora_basic_image_add_datastream($object, 'TN', $tn_file);
   }
-  $medium_file = file_copy($original_file, 'temporary://' . $file_name . 'MEDIUM.' . $ext);
+
+  $medium_file = file_copy($master_file, 'temporary://' . $file_name . 'MEDIUM.' . $ext);
+
   if (islandora_basic_image_create_derivative($medium_file, 500, 700)) {
     islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file);
   }
-  file_delete($original_file);
+
+  file_delete($master_file);
 }
 
 
