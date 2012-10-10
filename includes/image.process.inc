@@ -26,6 +26,8 @@ function islandora_basic_image_create_all_derivatives($object) {
   $ext = $mime_class->getExtension($object['OBJ']->mimeType);
   $file_name = str_replace(':', '-', $object->id);
 
+  // When we get a tiff, we need to save the original to an ARCHIVE datastream and replace the OBJ with a down-sampled JPG
+
   if ($ext == 'tiff' || $ext == 'tif') {
     $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
     $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
@@ -34,45 +36,49 @@ function islandora_basic_image_create_all_derivatives($object) {
 
     $ext = 'jpg';
 
-    // When a tiff, we need to save the original to an ARCHIVE datastream
+    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF', 'image/tiff');
 
-    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'image/tiff');
+    /// TODO: use $object['OBJ']->modifyDatastream instead?
+    /// need to reset label, mimetype, versionable, content
 
     // But we've still got a tiff as the main object (dsid OBJ) - let's fix that.
 
-    if ($object->purgeDatastream('OBJ')) {
+    $old_label = $object['OBJ']->label;
+
+    if ($object->purgeDatastream('OBJ')) {      
 
       $ds = $object->constructDatastream('OBJ', 'M');
-      $ds->label = 'OBJ';
+      $ds->label = 'JPEG Derived from TIFF Image ' . $old_label;
       $ds->mimeType = 'image/jpeg';
+      $ds->versionable = FALSE;
       $ds->setContentFromFile(drupal_realpath($master_file->uri));
       $object->ingestDatastream($ds);
+
 
       // TODO: non-administrator or non-authenticated user should not be able to look at the original tiff datastream; need to attach a policy
 
     } else {
 
-      drupal_set_message(t("islandora_basic_image_islandora_create_all_derivatives COULD NOT purge OBJ data streams"));
+      drupal_set_message(t("Could not rewrite "));
 
       // TODO: My my, what to do here for cleanup?
     }
 
 
   } else {
-
     $master_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'OBJ.' . $ext);
   }
 
   $tn_file = file_copy($master_file, 'temporary://' . $file_name . 'TN.' . $ext);
 
   if (islandora_basic_image_create_derivative($tn_file, 200, 200)) {
-    islandora_basic_image_add_datastream($object, 'TN', $tn_file);
+    islandora_basic_image_add_datastream($object, 'TN', $tn_file, 'Thumbnail Image');
   }
 
   $medium_file = file_copy($master_file, 'temporary://' . $file_name . 'MEDIUM.' . $ext);
 
   if (islandora_basic_image_create_derivative($medium_file, 500, 700)) {
-    islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file);
+    islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file, 'Medium Size Image');
   }
 
   file_delete($master_file);
@@ -102,11 +108,15 @@ function islandora_basic_image_create_derivative($file, $width, $height) {
  * @param string $dsid
  * @param object $file 
  */
-function islandora_basic_image_add_datastream($object, $dsid, $file) {
+function islandora_basic_image_add_datastream($object, $dsid, $file, $label, $mime_type = null) {
   try {
     $ds = $object->constructDatastream($dsid, 'M');
-    $ds->label = $dsid;
-    $ds->mimeType = $object['OBJ']->mimeType;
+    $ds->label = $label;
+    if (is_null($mime_type)) {
+      $ds->mimeType = $object['OBJ']->mimeType;
+    } else {
+      $ds->mimeType = $mime_type;
+    }      
     $ds->setContentFromFile(drupal_realpath($file->uri));
     $object->ingestDatastream($ds);
     file_delete($file);
