@@ -31,31 +31,37 @@ function islandora_basic_image_create_all_derivatives($object) {
   if ($ext == 'tiff' || $ext == 'tif') {
     $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
     $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
+    $old_label = $object['OBJ']->label;
 
     exec(escapeshellcmd("convert -resize 1024x1024> " . drupal_realpath($archive_file->uri)) . " " . drupal_realpath($master_file->uri));
 
     $ext = 'jpg';
 
-    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF', 'image/tiff');
+    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF from ' . $old_label, 'image/tiff');
 
     /// TODO: use $object['OBJ']->modifyDatastream instead?
     /// need to reset label, mimetype, versionable, content
 
     // But we've still got a tiff as the main object (dsid OBJ) - let's fix that.
 
-    $old_label = $object['OBJ']->label;
-
     if ($object->purgeDatastream('OBJ')) {      
 
       $ds = $object->constructDatastream('OBJ', 'M');
-      $ds->label = 'JPEG Derived from TIFF Image ' . $old_label;
+      $ds->label = 'JPEG Derived from Archival TIFF Image';
       $ds->mimeType = 'image/jpeg';
       $ds->versionable = FALSE;
       $ds->setContentFromFile(drupal_realpath($master_file->uri));
       $object->ingestDatastream($ds);
 
+      // 
 
-      // TODO: non-administrator or non-authenticated user should not be able to look at the original tiff datastream; need to attach a policy
+      $ds = $object->constructDatastream('POLICY', 'M');
+      $ds->label = 'Deny TIFF to Anonymous';
+      $ds->mimeType = 'application/rdf+xml';
+      $ds->versionable = TRUE;
+      $ds->setContentFromFile(drupal_get_path('module', 'islandora_basic_image') . '/includes/Deny-Archival-TIFF-to-Anonymous.rdf');
+      $object->ingestDatastream($ds);
+
 
     } else {
 
