@@ -29,6 +29,7 @@ function islandora_basic_image_create_all_derivatives($object) {
   // When we get a tiff, we need to save the original to an ARCHIVE datastream and replace the OBJ with a down-sampled JPG
 
   if ($ext == 'tiff' || $ext == 'tif') {
+
     $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
     $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
     $old_label = $object['OBJ']->label;
@@ -42,7 +43,7 @@ function islandora_basic_image_create_all_derivatives($object) {
     /// TODO: use $object['OBJ']->modifyDatastream instead?
     /// need to reset label, mimetype, versionable, content
 
-    // But we've still got a tiff as the main object (dsid OBJ) - let's fix that.
+    // At this point we've still got a tiff as the main object (dsid OBJ) - let's fix that.
 
     if ($object->purgeDatastream('OBJ')) {      
 
@@ -62,7 +63,6 @@ function islandora_basic_image_create_all_derivatives($object) {
       $ds->setContentFromFile(drupal_get_path('module', 'islandora_basic_image') . '/includes/Deny-Archival-TIFF-to-Anonymous.rdf');
       $object->ingestDatastream($ds);
 
-
     } else {
 
       drupal_set_message(t("Could not rewrite "));
@@ -70,6 +70,7 @@ function islandora_basic_image_create_all_derivatives($object) {
       // TODO: My my, what to do here for cleanup?
     }
 
+  // Not a TIFF:
 
   } else {
     $master_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'OBJ.' . $ext);
