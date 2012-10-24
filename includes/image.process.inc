@@ -65,7 +65,7 @@ function islandora_basic_image_create_all_derivatives($object) {
 
     } else {
 
-      drupal_set_message(t("Could not rewrite "));
+      drupal_set_message(t("Could not properly create and save a JPEG image from the submitted TIFF."));
 
       // TODO: My my, what to do here for cleanup?
     }
