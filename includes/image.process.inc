@@ -113,6 +113,8 @@ function islandora_basic_image_create_derivative($file, $width, $height) {
  * @param object $object
  * @param string $dsid
  * @param object $file
+ * @param string $label
+ * @param optional string $mime_type
  */
 function islandora_basic_image_add_datastream($object, $dsid, $file, $label, $mime_type = null) {
   try {
