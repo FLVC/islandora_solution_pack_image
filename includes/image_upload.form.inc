@@ -18,7 +18,7 @@
  */
 function islandora_basic_image_image_upload_form(array $form, array &$form_state) {
   $upload_size = min((int)ini_get('post_max_size'), (int)ini_get('upload_max_filesize'));
-  $extensions = array('gif png jpg jpeg');
+  $extensions = array('gif png jpg jpeg tiff tif');
   return array(
     'file' => array(
       '#title' => t('Image'),
