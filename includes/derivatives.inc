@@ -31,6 +31,45 @@ function islandora_basic_image_create_all_derivatives(FedoraObject $object) {
   $object['OBJ']->getContent($file_uri);
   $original_file = file_save($file);
 
+  if ($ext == 'tiff' || $ext == 'tif') {   // we have to save it and replace OBJ with a derived version
+
+    $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
+    $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
+    $old_label = $object['OBJ']->label;
+
+    exec(escapeshellcmd("convert -resize 1024x1024> " . drupal_realpath($archive_file->uri)) . " " . drupal_realpath($master_file->uri));
+
+    $ext = 'jpg';
+
+    islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF from ' . $old_label, 'image/tiff');
+
+    if ($object->purgeDatastream('OBJ')) {
+
+      $ds = $object->constructDatastream('OBJ', 'M');
+      $ds->label = 'JPEG Derived from Archival TIFF Image';
+      $ds->mimeType = 'image/jpeg';
+      $ds->versionable = FALSE;
+      $ds->setContentFromFile(drupal_realpath($master_file->uri));
+      $object->ingestDatastream($ds);
+
+      //
+
+      $ds = $object->constructDatastream('POLICY', 'M');
+      $ds->label = 'Deny TIFF to Anonymous';
+      $ds->mimeType = 'application/rdf+xml';
+      $ds->versionable = TRUE;
+      $ds->setContentFromFile(drupal_get_path('module', 'islandora_basic_image') . '/includes/Deny-Archival-TIFF-to-Anonymous.rdf');
+      $object->ingestDatastream($ds);
+
+    } else {
+
+      drupal_set_message(t("Could not properly create and save a JPEG image from the submitted TIFF."));
+    }
+
+  }
+
+
+
   $tn_file = file_copy($original_file, 'temporary://' . $file_name . 'TN.' . $ext);
   if (islandora_basic_image_scale_image($tn_file, 200, 200)) {
     islandora_basic_image_add_datastream($object, 'TN', $tn_file);
