@@ -196,3 +196,48 @@ function islandora_basic_image_islandora_sp_basic_image_islandora_ingest_steps()
     ),
   );
 }
+
+function islandora_basic_image_form_alter(&$form, $form_state, $form_id) {
+
+  if ($form_id == 'islandora_ingest_form')
+  {
+    //if ($form['#form_step_id'] == 'xml_form_builder_metadata_step')
+    if ($form['form_step_id']['#value'] == 'xml_form_builder_metadata_step')
+    {
+      $form['#validate'][] = 'iid_test_validate';
+    }
+  }
+}
+
+function iid_test_validate($form, &$form_state) {
+
+  $errmsg = 'The following IID identifiers already exist: ';
+  $error_IID_numbers = '';
+  $identifier_count = 0;
+  if (isset($form['id'])) {
+      $identifier_count = count($form['id']);
+  }
+
+  for ($i=0; $i<$identifier_count; $i++)
+  {
+    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&($form['id'][$i]['type']['#value'] == 'IID') )
+    {
+      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_IID_ms%3A" . $form['id'][$i]['identifier']['#value'];
+
+      $results = file_get_contents($solr_url);
+      $solr_results = array();
+      if (isset($results)) {
+          $solr_results = json_decode($results, TRUE);
+          $numfound = $solr_results['response']['numFound'];
+          if ($numfound > 0) {
+              //form_set_error('', t('The IID identifier %iidnum already exists.', array('%iidnum' => $form['id'][$i]['identifier']['#value'])));
+              $error_IID_numbers = $error_IID_numbers . $form['id'][$i]['identifier']['#value'] . ' ';
+          }
+      }
+    }
+  }
+
+  if (strlen($error_IID_numbers) > 0) {
+    form_set_error('', t('The following IID identifiers already exist: %iidnums', array('%iidnums' => $error_IID_numbers)));
+  }
+}
