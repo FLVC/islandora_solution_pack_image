@@ -211,7 +211,7 @@ function islandora_basic_image_form_alter(&$form, $form_state, $form_id) {
   {
       if (!isset($form['available_forms']))
       {
-//          $form['#validate'][] = 'iid_validate_edit';
+          $form['#validate'][] = 'iid_validate_edit';
       }
   }
 }
@@ -259,8 +259,7 @@ function iid_validate_edit($form, &$form_state) {
   }
 
   $form_action = explode('/',$form['#action']);
-  //$form_set_error('', $form_action[2]);
-  $form_set_error('',t('In edit validation function.'));
+  $edit_object_pid = urldecode($form_action[3]);
 
   for ($i=0; $i<$identifier_count; $i++)
   {
@@ -274,14 +273,19 @@ function iid_validate_edit($form, &$form_state) {
           $solr_results = json_decode($results, TRUE);
           $numfound = $solr_results['response']['numFound'];
           if ($numfound > 0) {
-              //form_set_error('', t('The IID identifier %iidnum already exists.', array('%iidnum' => $form['id'][$i]['identifier']['#value'])));
-              $error_IID_numbers = $error_IID_numbers . $form['id'][$i]['identifier']['#value'] . ' ';
+              $object_results = $solr_results['response']['docs'];
+              foreach ($object_results as $object_index => $object_result)
+              {
+                  if ($edit_object_pid != $object_result['PID']) {
+                      $error_IID_numbers = $error_IID_numbers . $form['id'][$i]['identifier']['#value'] . ' ';
+                  }
+              }
           }
       }
     }
   }
 
   if (strlen($error_IID_numbers) > 0) {
-    form_set_error('', t('The following IID identifiers already exist: %iidnums', array('%iidnums' => $error_IID_numbers)));
+    form_set_error('', t('The following IID identifiers already exist in other objects: %iidnums', array('%iidnums' => $error_IID_numbers)));
   }
 }
