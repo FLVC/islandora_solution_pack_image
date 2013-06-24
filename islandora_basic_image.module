@@ -227,9 +227,9 @@ function iid_validate_ingest($form, &$form_state) {
 
   for ($i=0; $i<$identifier_count; $i++)
   {
-    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&($form['id'][$i]['type']['#value'] == 'IID') )
+    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0) )
     {
-      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_IID_ms%3A" . $form['id'][$i]['identifier']['#value'];
+      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . $form['id'][$i]['identifier']['#value'];
 
       $results = file_get_contents($solr_url);
       $solr_results = array();
@@ -263,9 +263,9 @@ function iid_validate_edit($form, &$form_state) {
 
   for ($i=0; $i<$identifier_count; $i++)
   {
-    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&($form['id'][$i]['type']['#value'] == 'IID') )
+    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0) )
     {
-      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_IID_ms%3A" . $form['id'][$i]['identifier']['#value'];
+      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . $form['id'][$i]['identifier']['#value'];
 
       $results = file_get_contents($solr_url);
       $solr_results = array();
