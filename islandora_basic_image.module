@@ -225,11 +225,13 @@ function iid_validate_ingest($form, &$form_state) {
       $identifier_count = count($form['id']);
   }
 
+  $iid_count = 0;
   for ($i=0; $i<$identifier_count; $i++)
   {
-    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0) )
+    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0)&&(strlen(trim($form['id'][$i]['identifier']['#value'])) > 0) )
     {
-      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . $form['id'][$i]['identifier']['#value'];
+      $iid_count += 1;
+      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . trim(strtolower($form['id'][$i]['identifier']['#value']));
 
       $results = file_get_contents($solr_url);
       $solr_results = array();
@@ -242,6 +244,10 @@ function iid_validate_ingest($form, &$form_state) {
           }
       }
     }
+  }
+
+  if ($iid_count == 0) {
+    form_set_error('', t('You must enter an IID identifier.'));
   }
 
   if (strlen($error_IID_numbers) > 0) {
@@ -261,11 +267,13 @@ function iid_validate_edit($form, &$form_state) {
   $form_action = explode('/',$form['#action']);
   $edit_object_pid = urldecode($form_action[3]);
 
+  $iid_count = 0;
   for ($i=0; $i<$identifier_count; $i++)
   {
-    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0) )
+    if ( (isset($form['id'][$i]['identifier']['#value']))&&(isset($form['id'][$i]['type']['#value']))&&(strcasecmp($form['id'][$i]['type']['#value'], 'IID') == 0)&&(strlen(trim($form['id'][$i]['identifier']['#value'])) > 0) )
     {
-      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . $form['id'][$i]['identifier']['#value'];
+      $iid_count += 1;
+      $solr_url = "http://localhost:8080/solr/select/?version=2.2&start=0&rows=10&indent=on&fl=PID&wt=json&q=mods_identifier_iid_ms%3A" . trim(strtolower($form['id'][$i]['identifier']['#value']));
 
       $results = file_get_contents($solr_url);
       $solr_results = array();
@@ -283,6 +291,10 @@ function iid_validate_edit($form, &$form_state) {
           }
       }
     }
+  }
+
+  if ($iid_count == 0) {
+    form_set_error('', t('You must enter an IID identifier.'));
   }
 
   if (strlen($error_IID_numbers) > 0) {
