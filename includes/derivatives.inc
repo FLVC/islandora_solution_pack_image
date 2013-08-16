@@ -54,12 +54,12 @@ function islandora_basic_image_create_all_derivatives(AbstractObject $object) {
 
       //
 
-      $ds = $object->constructDatastream('POLICY', 'M');
-      $ds->label = 'Deny TIFF to Anonymous';
-      $ds->mimeType = 'application/rdf+xml';
-      $ds->versionable = TRUE;
-      $ds->setContentFromFile(drupal_get_path('module', 'islandora_basic_image') . '/includes/Deny-Archival-TIFF-to-Anonymous.rdf');
-      $object->ingestDatastream($ds);
+      /* $ds = $object->constructDatastream('POLICY', 'M'); */
+      /* $ds->label = 'Deny TIFF to Anonymous'; */
+      /* $ds->mimeType = 'application/rdf+xml'; */
+      /* $ds->versionable = TRUE; */
+      /* $ds->setContentFromFile(drupal_get_path('module', 'islandora_basic_image') . '/includes/Deny-Archival-TIFF-to-Anonymous.rdf'); */
+      /* $object->ingestDatastream($ds); */
 
     } else {
 
