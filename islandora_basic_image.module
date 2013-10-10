@@ -112,14 +112,6 @@ function islandora_basic_image_islandora_sp_basic_image_islandora_view_object($o
 }
 
 /**
- * Implements hook_CMODEL_PID_islandora_object_ingested().
- */
-function islandora_basic_image_islandora_sp_basic_image_islandora_object_ingested($object) {
-  module_load_include('inc', 'islandora_basic_image', 'includes/derivatives');
-  islandora_basic_image_create_all_derivatives($object);
-}
-
-/**
  * Implements hook_preprocess_theme().
  */
 function islandora_basic_image_preprocess_islandora_basic_image(array &$variables) {
@@ -129,8 +121,11 @@ function islandora_basic_image_preprocess_islandora_basic_image(array &$variable
   $repository = $islandora_object->repository;
   module_load_include('inc', 'islandora', 'includes/datastream');
   module_load_include('inc', 'islandora', 'includes/utilities');
+  module_load_include('inc', 'islandora', 'includes/metadata');
 
-  if (islandora_datastream_access(FEDORA_VIEW_OBJECTS, $islandora_object['DC'])) {
+  // We should eventually remove the DC object and dc_array code as it only
+  // exists to not break legacy implementations.
+  if (islandora_datastream_access(ISLANDORA_VIEW_OBJECTS, $islandora_object['DC'])) {
     try {
       $dc = $islandora_object['DC']->content;
       $dc_object = DublinCore::importFromXMLString($dc);
@@ -144,9 +139,12 @@ function islandora_basic_image_preprocess_islandora_basic_image(array &$variable
   $variables['islandora_object_label'] = $islandora_object->label;
   $variables['theme_hook_suggestions'][] = 'islandora_basic_image__' . str_replace(':', '_', $islandora_object->id);
   $variables['parent_collections'] = islandora_get_parents_from_rels_ext($islandora_object);
+  $variables['metadata'] = islandora_retrieve_metadata_markup($islandora_object);
+  $variables['description'] = islandora_retrieve_description_markup($islandora_object);
+
   global $base_url;
   // Original.
-  if (isset($islandora_object['OBJ']) && islandora_datastream_access(FEDORA_VIEW_OBJECTS, $islandora_object['OBJ'])) {
+  if (isset($islandora_object['OBJ']) && islandora_datastream_access(ISLANDORA_VIEW_OBJECTS, $islandora_object['OBJ'])) {
     $full_size_url = url("islandora/object/{$islandora_object->id}/datastream/OBJ/view", array('absolute' => TRUE));
     $variables['islandora_full_url'] = $full_size_url;
     $params = array(
@@ -156,7 +154,7 @@ function islandora_basic_image_preprocess_islandora_basic_image(array &$variable
     $variables['islandora_full_img'] = theme('image', $params);
   }
   // Thumbnail.
-  if (isset($islandora_object['TN']) && islandora_datastream_access(FEDORA_VIEW_OBJECTS, $islandora_object['TN'])) {
+  if (isset($islandora_object['TN']) && islandora_datastream_access(ISLANDORA_VIEW_OBJECTS, $islandora_object['TN'])) {
     $thumbnail_size_url = url("islandora/object/{$islandora_object->id}/datastream/TN/view");
     $params = array(
       'title' => $islandora_object->label,
@@ -165,7 +163,7 @@ function islandora_basic_image_preprocess_islandora_basic_image(array &$variable
     $variables['islandora_thumbnail_img'] = theme('image', $params);
   }
   // Medium size.
-  if (isset($islandora_object['MEDIUM_SIZE']) && islandora_datastream_access(FEDORA_VIEW_OBJECTS, $islandora_object['MEDIUM_SIZE'])) {
+  if (isset($islandora_object['MEDIUM_SIZE']) && islandora_datastream_access(ISLANDORA_VIEW_OBJECTS, $islandora_object['MEDIUM_SIZE'])) {
     $medium_size_url = url("islandora/object/{$islandora_object->id}/datastream/MEDIUM_SIZE/view");
     $params = array(
       'title' => $islandora_object->label,
@@ -220,6 +218,32 @@ function islandora_basic_image_islandora_sp_basic_image_islandora_ingest_steps()
       'form_id' => 'islandora_basic_image_image_upload_form',
       'module' => 'islandora_basic_image',
       'file' => 'includes/image_upload.form.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_islandora_CMODEL_PID_derivative().
+ */
+function islandora_basic_image_islandora_sp_basic_image_islandora_derivative() {
+  return array(
+    array(
+      'source_dsid' => 'OBJ',
+      'destination_dsid' => 'TN',
+      'weight' => '0',
+      'function' => array(
+        'islandora_basic_image_create_thumbnail',
+      ),
+      'file' => drupal_get_path('module', 'islandora_basic_image') . '/includes/derivatives.inc',
+    ),
+    array(
+      'source_dsid' => 'OBJ',
+      'destination_dsid' => 'MEDIUM_SIZE',
+      'weight' => '1',
+      'function' => array(
+        'islandora_basic_image_create_medium_size',
+      ),
+      'file' => drupal_get_path('module', 'islandora_basic_image') . '/includes/derivatives.inc',
     ),
   );
 }
