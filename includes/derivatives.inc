@@ -83,8 +83,6 @@ function islandora_basic_image_create_all_derivatives(AbstractObject $object) {
 }
 */
 /**
-=======
->>>>>>> upstream/7.x
  * Scales the given image.
  *
  * @param object $file
