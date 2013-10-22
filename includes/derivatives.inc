@@ -121,13 +121,14 @@ function islandora_basic_image_scale_image($file, $width, $height) {
  *   TRUE if the datastream was added/modified successfully, the error message
  *   otherwise.
  */
-function islandora_basic_image_add_datastream(AbstractObject $object, $dsid, $file) {
+function islandora_basic_image_add_datastream(AbstractObject $object, $dsid, $file, $mimetype) {
   try {
     $ingest = !isset($object[$dsid]);
     if ($ingest) {
       $ds = $object->constructDatastream($dsid, 'M');
       $ds->label = $dsid;
-      $ds->mimeType = $object['OBJ']->mimeType;
+      $ds->mimeType = $mimetype;
+      //$ds->mimeType = $object['OBJ']->mimeType;
     }
     else {
       $ds = $object[$dsid];
@@ -166,9 +167,9 @@ function islandora_basic_image_create_thumbnail(AbstractObject $object, $force =
       return islandora_basic_image_no_obj_datastream($object->id);
     }
     else {
-      $tn_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'TN.' . $original_file['extension']);
+      $tn_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'TN.' . 'jpg');
       if (islandora_basic_image_scale_image($tn_file, 200, 200)) {
-        $added_successfully = islandora_basic_image_add_datastream($object, 'TN', $tn_file);
+        $added_successfully = islandora_basic_image_add_datastream($object, 'TN', $tn_file, 'image/jpeg');
         if ($added_successfully !== TRUE) {
           $return = islandora_basic_image_failed_adding($added_successfully);
         }
@@ -218,9 +219,9 @@ function islandora_basic_image_create_medium_size(AbstractObject $object, $force
       return islandora_basic_image_no_obj_datastream($object->id);
     }
     else {
-      $medium_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'TN.' . $original_file['extension']);
+      $medium_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'MEDIUM.' . 'jpg');
       if (islandora_basic_image_scale_image($medium_file, 500, 700)) {
-        $added_successfully = islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file);
+        $added_successfully = islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file, 'image/jpeg');
         if ($added_successfully !== TRUE) {
           $return = islandora_basic_image_failed_adding($added_successfully);
         }
@@ -240,6 +241,80 @@ function islandora_basic_image_create_medium_size(AbstractObject $object, $force
       else {
         $return = islandora_basic_image_failed_scaling();
       }
+    }
+    if (isset($original_file)) {
+      file_delete($original_file['file']);
+    }
+    return $return;
+  }
+}
+
+/**
+ * Creates the ARCHIVE derivative for basic image.
+ *
+ * @param AbstractObject $object
+ *   An AbstractObject representing a Fedora object.
+ * @param bool $force
+ *   Whether derivative generation is being forced or not.
+ *
+ * @return array
+ *   An array describing the outcome of the thumbnail creation.
+ *
+ * @see hook_islandora_derivative()
+ */
+function islandora_basic_image_create_archive(AbstractObject $object, $force = FALSE) {
+  $return = '';
+  if (!isset($object['ARCHIVE']) || (isset($object['ARCHIVE']) && $force === TRUE)) {
+    $original_file = islandora_basic_image_copy_obj_datastream($object);
+    if ($original_file === FALSE) {
+      return islandora_basic_image_no_obj_datastream($object->id);
+    }
+    else if ($original_file['extension'] == 'tiff' || $original_file['extension'] == 'tif') {
+
+        // we have to save it and replace OBJ with a derived version
+
+        $file_name = $original_file['filename'];
+        
+        $archive_file = file_save_data($object['OBJ']->content, 'temporary://' . $file_name . 'ARCHIVE.tiff');
+        $master_file  = file_save_data('', 'temporary://' . $file_name . 'OBJ.jpg');
+        $old_label = $object['OBJ']->label;
+
+        exec(escapeshellcmd("convert -resize 1024x1024> " . drupal_realpath($archive_file->uri)) . " " . drupal_realpath($master_file->uri));
+
+        $ext = 'jpg';
+
+        //$added_successfully = islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF from ' . $old_label, 'image/tiff');
+        $added_successfully = islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'image/tiff');
+        if ($added_successfully !== TRUE) {
+          $return = islandora_basic_image_failed_adding($added_successfully);
+        }
+        else {
+          $return = array(
+            'success' => TRUE,
+            'messages' => array(
+              array(
+                'message' => t('The ARCHIVE datastream was added successfully for @pid!'),
+                'message_sub' => array('@pid' => $object->id),
+                'type' => 'dsm',
+              ),
+            ),
+          );
+        }
+
+        if ($object->purgeDatastream('OBJ')) {
+
+          $ds = $object->constructDatastream('OBJ', 'M');
+          $ds->label = 'JPEG Derived from Archival TIFF Image';
+          $ds->mimeType = 'image/jpeg';
+          $ds->versionable = FALSE;
+          $ds->setContentFromFile(drupal_realpath($master_file->uri));
+          $object->ingestDatastream($ds);
+
+        } else {
+
+          drupal_set_message(t("Could not properly create and save a JPEG image from the submitted TIFF."));
+        }
+
     }
     if (isset($original_file)) {
       file_delete($original_file['file']);
