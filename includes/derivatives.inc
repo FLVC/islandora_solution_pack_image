@@ -315,6 +315,7 @@ function islandora_basic_image_create_archive(AbstractObject $object, $force = F
           drupal_set_message(t("Could not properly create and save a JPEG image from the submitted TIFF."));
         }
 
+        file_delete($master_file);
     }
     if (isset($original_file)) {
       file_delete($original_file['file']);
