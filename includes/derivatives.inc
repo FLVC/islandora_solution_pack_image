@@ -59,7 +59,7 @@ function islandora_basic_image_scale_image($file, $width, $height, $upscale = TR
  *   TRUE if the datastream was added/modified successfully, the error message
  *   otherwise.
  */
-function islandora_basic_image_add_datastream(AbstractObject $object, $dsid, $file) {
+function islandora_basic_image_add_datastream(AbstractObject $object, $dsid, $file, $mimetype) {
   try {
     $ingest = !isset($object[$dsid]);
     if ($ingest) {
@@ -69,8 +69,9 @@ function islandora_basic_image_add_datastream(AbstractObject $object, $dsid, $fi
     else {
       $ds = $object[$dsid];
     }
-    if ($ds->mimeType != $file->filemime) {
-      $ds->mimeType = $file->filemime;
+    // FLVC - need to set mimetype for TIFF derivatives
+    if ($ds->mimeType != $mimetype) {
+      $ds->mimeType = $mimetype;
     }
     $ds->setContentFromFile(drupal_realpath($file->uri));
     if ($ingest) {
@@ -112,7 +113,7 @@ function islandora_basic_image_create_thumbnail(AbstractObject $object, $force =
     else {
       $tn_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'TN.' . 'jpg');
       if (islandora_basic_image_scale_image($tn_file, 200, 200)) {
-        $added_successfully = islandora_basic_image_add_datastream($object, 'TN', $tn_file);
+        $added_successfully = islandora_basic_image_add_datastream($object, 'TN', $tn_file, 'image/jpeg');
         if ($added_successfully !== TRUE) {
           $return = islandora_basic_image_failed_adding($added_successfully);
         }
@@ -162,10 +163,10 @@ function islandora_basic_image_create_medium_size(AbstractObject $object, $force
       return islandora_basic_image_no_obj_datastream($object->id);
     }
     else {
-      $medium_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'MEDIUM.' . $original_file['extension']);
+      $medium_file = file_copy($original_file['file'], 'temporary://' . $original_file['filename'] . 'MEDIUM.' . 'jpg');
       $upscale = variable_get('islandora_basic_image_upscale_images', TRUE);
       if (islandora_basic_image_scale_image($medium_file, 500, 700, $upscale)) {
-        $added_successfully = islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file);
+        $added_successfully = islandora_basic_image_add_datastream($object, 'MEDIUM_SIZE', $medium_file, 'image/jpeg');
         if ($added_successfully !== TRUE) {
           $return = islandora_basic_image_failed_adding($added_successfully);
         }
@@ -228,7 +229,7 @@ function islandora_basic_image_create_archive(AbstractObject $object, $force = F
         $ext = 'jpg';
 
         //$added_successfully = islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'Original Archival TIFF from ' . $old_label, 'image/tiff');
-        $added_successfully = islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file);
+        $added_successfully = islandora_basic_image_add_datastream($object, 'ARCHIVE', $archive_file, 'image/tiff');
         if ($added_successfully !== TRUE) {
           $return = islandora_basic_image_failed_adding($added_successfully);
         }
